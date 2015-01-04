@@ -1839,6 +1839,38 @@ fn write_file_descriptor_data(file: &FileDescriptorProto, w: &mut IndentWriter) 
     });
 }
 
+// Join two strings by a separator. If either string is empty the other is returned with no
+// separator.
+fn join_strings(a: &str, b: &str, sep: &str) -> String {
+    match (a, b) {
+        ("", b) => b.to_string(),
+        (a, "") => a.to_string(),
+        (a, b) => format!("{}{}{}", a, sep, b),
+    }
+}
+
+// Write 'use' line for one enum type.
+fn write_enum_import(en: &EnumDescriptorProto, base: &str, prefix: &str, w: &mut IndentWriter) {
+    let nested_name = join_strings(prefix, en.get_name(), "_");
+    w.write_line(format!("use super::{}::{};", base, nested_name.as_slice()));
+}
+
+// Write the 'use' line for the message, as well as for any nested types it contains.
+fn write_message_imports(message: &DescriptorProto, base: &str, prefix: &str, w: &mut IndentWriter) {
+    let nested_name = join_strings(prefix, message.get_name(), "_");
+    w.write_line(format!("use super::{}::{};", base, nested_name.as_slice()));
+
+    // Write imports for any nested messages.
+    for nested in message.get_nested_type().iter() {
+        write_message_imports(nested, base, nested_name.as_slice(), w);
+    }
+
+    // Write imports for any nested Enums.
+    for en in message.get_enum_type().iter() {
+        write_enum_import(en, base, nested_name.as_slice(), w);
+    }
+}
+
 pub fn gen(file_descriptors: &[FileDescriptorProto], files_to_generate: &[String], _: &GenOptions)
         -> Vec<GenResult>
 {
@@ -1874,14 +1906,16 @@ pub fn gen(file_descriptors: &[FileDescriptorProto], files_to_generate: &[String
             for dep in file.get_dependency().iter() {
                 // TODO: should use absolute paths in file instead of global uses
                 for message in files_map[dep.as_slice()].get_message_type().iter() {
-                    w.write_line(format!("use super::{}::{};",
-                        proto_path_to_rust_base(dep.as_slice()),
-                        message.get_name()));
+                    write_message_imports(message,
+                        proto_path_to_rust_base(dep.as_slice()).as_slice(),
+                        "",
+                        &mut w);
                 }
                 for en in files_map[dep.as_slice()].get_enum_type().iter() {
-                    w.write_line(format!("use super::{}::{};",
-                        proto_path_to_rust_base(dep.as_slice()),
-                        en.get_name()));
+                    write_enum_import(en,
+                        proto_path_to_rust_base(dep.as_slice()).as_slice(),
+                        "",
+                        &mut w);
                 }
             }
 
