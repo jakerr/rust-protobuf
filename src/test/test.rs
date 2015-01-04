@@ -3,6 +3,8 @@ use protobuf::hex::decode_hex;
 
 use shrug::*;
 use test_lite_runtime;
+use test_import;
+use test_import_imported;
 
 use protobuf::*;
 
@@ -252,6 +254,16 @@ fn test_lite_runtime() {
     let mut m = test_lite_runtime::TestLiteRuntime::new();
     m.set_v(10);
     test_serialize_deserialize("08 0a", &m);
+
+    // test it doesn't crash
+    format!("{}", m);
+}
+
+#[test]
+fn test_imported_nested_message() {
+    let mut m = test_import::ContainsImported::new();
+    m.set_imported_child(test_import_imported::ImportedMessage_Child::new());
+    test_serialize_deserialize_no_hex(&m);
 
     // test it doesn't crash
     format!("{}", m);
