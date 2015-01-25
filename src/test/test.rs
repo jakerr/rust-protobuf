@@ -268,3 +268,13 @@ fn test_imported_nested_message() {
     // test it doesn't crash
     format!("{}", m);
 }
+
+#[test]
+fn test_imported_nested_message() {
+    let mut m = test_import::ContainsImported::new();
+    m.set_imported_child(test_import_imported::ImportedMessage_Child::new());
+    test_serialize_deserialize_no_hex(&m);
+
+    // test it doesn't crash
+    format!("{}", m);
+}
